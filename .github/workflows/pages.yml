@@ -1,0 +1,59 @@
+# Publica apps/web (modo demo, sin API) en GitHub Pages:
+# https://serrana-dev.github.io/turnos-asistencia/
+# Se dispara con cada push a la rama de trabajo, o a mano desde la pestaña Actions.
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [feat/web-api-esqueleto]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Una publicación por vez; si llega otra, la anterior en curso se cancela.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Build de la web
+        run: npm run build:web
+        env:
+          BASE_PATH: /turnos-asistencia/
+
+      # GitHub Pages no sabe de rutas de la app (/e/lau, /dueno): con 404.html = index.html,
+      # abrir un enlace directo carga la app y el router muestra la pantalla correcta.
+      - name: Rutas directas
+        run: cp apps/web/dist/index.html apps/web/dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

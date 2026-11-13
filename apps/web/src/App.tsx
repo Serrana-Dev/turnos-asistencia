@@ -79,7 +79,8 @@ function Home() {
 
 export function App() {
   return (
-    <BrowserRouter>
+    // En GitHub Pages la app vive en /turnos-asistencia/: el router tiene que saberlo.
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/ayuda" element={<HelpView />} />
