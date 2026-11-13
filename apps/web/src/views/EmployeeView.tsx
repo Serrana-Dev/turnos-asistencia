@@ -7,11 +7,22 @@ import { AppShell } from "../components/AppShell";
 import { DayDetail } from "../components/DayDetail";
 import { FirstVisitTip } from "../components/FirstVisitTip";
 import { Modal } from "../components/Modal";
+import { ScheduleTimeline } from "../components/ScheduleTimeline";
+import { dayStatus, type DayStatus } from "../lib/dayStatus";
+import { useNow } from "../lib/useNow";
 import { MonthCalendar } from "../components/MonthCalendar";
 import { TimesheetView } from "../components/TimesheetView";
 import { buildCalendar, colorIndex } from "../lib/calendar";
 import { DEMO_MODE, fetchEmployeeSnapshot, sendPunch, type EmployeeSnapshot } from "../lib/api";
-import { formatDateKey, formatDistance, formatLongDate, formatMonth, formatSpan, formatTime } from "../lib/format";
+import {
+  formatDateKey,
+  formatDistance,
+  formatFromTo,
+  formatLongDate,
+  formatMinutes,
+  formatMonth,
+  formatTime,
+} from "../lib/format";
 import { POSITION_ERROR_TEXT, currentPosition, getConsent, setConsent, type GeoConsent } from "../lib/geo";
 import { punchQueue } from "../lib/localQueue";
 import { newPunch } from "../lib/punchQueue";
@@ -33,6 +44,8 @@ export function EmployeeView() {
   /** Marca esperando que el empleado elija si comparte la ubicación (primera vez), o "settings" para cambiarlo. */
   const [consentFor, setConsentFor] = useState<Punch | "settings" | null>(null);
   const hasData = useRef(false);
+  // Se actualiza sola: el horario de hoy muestra en vivo cuánto falta para entrar o salir.
+  const now = useNow();
 
   /**
    * Envía la cola y recarga. Primero los datos del servidor y después la cola: así una marca recién
@@ -78,7 +91,6 @@ export function EmployeeView() {
 
   const { me, business, planned } = data;
   const tz = business.tzOffsetMinutes;
-  const now = Date.now();
   const today = localDateKey(now, tz);
   const next = nextPunchType(punches, me.id);
   const last = lastPunch(punches, me.id);
@@ -109,6 +121,7 @@ export function EmployeeView() {
     data.daysOff,
   );
   const selectedDay = selected && gridDates.includes(selected) ? selected : today;
+  const gridIndex = gridDates.indexOf(selectedDay);
 
   const workplaces = data.workplaces;
   const checksLocation = workplaces.length > 0;
@@ -199,18 +212,15 @@ export function EmployeeView() {
           <span className={`dot ${working ? "on" : "off"}`} aria-hidden="true" />
           <span>{working ? `Estás trabajando desde ${sinceLabel}` : "No estás trabajando ahora"}</span>
         </div>
-        <p className="muted">
-          {todayShifts.length > 0 ? (
-            <>
-              Tu horario de hoy:{" "}
-              <strong className="num">{todayShifts.map((s) => formatSpan(s.start, s.end, tz)).join(" y ")}</strong>
-            </>
-          ) : offToday ? (
-            "Hoy tenés franco."
-          ) : (
-            "Hoy no tenés turno asignado."
-          )}
-        </p>
+        {todayShifts.length > 0 ? (
+          <div className="today-schedule">
+            <h3 className="body-title">Tu horario de hoy</h3>
+            <NowBanner status={dayStatus(todayShifts, now)} tz={tz} />
+            <ScheduleTimeline shifts={todayShifts} tz={tz} now={now} />
+          </div>
+        ) : (
+          <p className="muted">{offToday ? "Hoy tenés franco." : "Hoy no tenés turno asignado."}</p>
+        )}
         <button type="button" className={`punch-btn ${next === "IN" ? "in" : "out"}`} onClick={punch} disabled={busy}>
           {next === "IN" ? <LogIn size={26} aria-hidden="true" /> : <LogOut size={26} aria-hidden="true" />}
           {next === "IN" ? "Marcar entrada" : "Marcar salida"}
@@ -287,7 +297,7 @@ export function EmployeeView() {
               <>
                 Próximo día de trabajo:{" "}
                 <strong>
-                  {formatLongDate(nextDay)}, {nextDayShifts.map((s) => formatSpan(s.start, s.end, tz)).join(" y ")}
+                  {formatLongDate(nextDay)}, {nextDayShifts.map((s) => formatFromTo(s.start, s.end, tz)).join(" y ")}
                 </strong>
                 .{" "}
               </>
@@ -312,6 +322,17 @@ export function EmployeeView() {
           onSelect={setSelected}
           mode="single"
         />
+        <p className="muted small legend">
+          <span className="legend-item">
+            <span className="swatch in" aria-hidden="true" /> Entrada (arriba)
+          </span>
+          <span className="legend-item">
+            <span className="swatch out" aria-hidden="true" /> Salida (abajo)
+          </span>
+          <span className="legend-item">
+            <span className="cal-extra static">+2h</span> Horas extra
+          </span>
+        </p>
         <DayDetail
           date={selectedDay}
           today={today}
@@ -321,6 +342,8 @@ export function EmployeeView() {
           employees={employeeMap}
           colors={colors}
           audience="employee"
+          onPrev={gridIndex > 0 ? () => setSelected(gridDates[gridIndex - 1]!) : undefined}
+          onNext={gridIndex < gridDates.length - 1 ? () => setSelected(gridDates[gridIndex + 1]!) : undefined}
           emptyText={selectedDay < today ? "No trabajaste ni tenías turno este día." : "Día libre."}
         />
       </section>
@@ -336,5 +359,25 @@ export function EmployeeView() {
         />
       </section>
     </AppShell>
+  );
+}
+
+/** Una frase con lo que importa ahora: cuánto falta para entrar, para salir o para volver de la pausa. */
+function NowBanner({ status, tz }: { status: DayStatus; tz: number }) {
+  if (status.kind === "done") {
+    return <p className="now-banner done">Tu horario de hoy terminó.</p>;
+  }
+  const inTime = formatMinutes(status.minutes);
+  const at = formatTime(status.at, tz);
+  const text =
+    status.kind === "before"
+      ? `Entrás en ${inTime}, a las ${at}.`
+      : status.kind === "working"
+        ? `Estás en horario. Salís en ${inTime}, a las ${at}.`
+        : `Estás en la pausa. Volvés en ${inTime}, a las ${at}.`;
+  return (
+    <p className={`now-banner ${status.kind}`} aria-live="polite">
+      {text}
+    </p>
   );
 }

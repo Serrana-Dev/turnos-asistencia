@@ -1,6 +1,6 @@
 import type { Employee } from "@turnos/contract";
 import type { DayEntry } from "../lib/calendar";
-import { DAY_OFF_LABEL, formatLongDate, formatMinutes, formatShortSpan, initials } from "../lib/format";
+import { DAY_OFF_LABEL, formatLongDate, formatMinutes, formatShortTime, initials } from "../lib/format";
 
 const HEADERS = ["L", "M", "M", "J", "V", "S", "D"];
 const HEADERS_LONG = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
@@ -85,9 +85,11 @@ function SingleCell({ entry, tz }: { entry?: DayEntry; tz: number }) {
   return (
     <>
       {entry.dayOff && <span className="cal-off">{DAY_OFF_LABEL[entry.dayOff]}</span>}
+      {/* Cada tramo: entrada arriba (verde), salida abajo (violeta). */}
       {entry.shifts.map((s) => (
-        <span key={s.id} className={`cal-shift ${s.status === "DRAFT" ? "draft" : ""}`}>
-          {formatShortSpan(s.start, s.end, tz)}
+        <span key={s.id} className={`cal-seg ${s.status === "DRAFT" ? "draft" : ""}`}>
+          <span className="cal-in">{formatShortTime(s.start, tz)}</span>
+          <span className="cal-out">{formatShortTime(s.end, tz)}</span>
         </span>
       ))}
       {entry.workedMin > 0 && (
@@ -126,7 +128,13 @@ function TeamCell({
           {/* Horario cortado: un tramo por línea. */}
           <span className="cal-times">
             {e.shifts.length ? (
-              e.shifts.map((s) => <span key={s.id}>{formatShortSpan(s.start, s.end, tz)}</span>)
+              e.shifts.map((s) => (
+                <span key={s.id}>
+                  <span className="cal-in">{formatShortTime(s.start, tz)}</span>
+                  <span className="cal-arrow">›</span>
+                  <span className="cal-out">{formatShortTime(s.end, tz)}</span>
+                </span>
+              ))
             ) : (
               <span>{formatCompact(e.workedMin)}</span>
             )}
@@ -158,7 +166,9 @@ function describeDay(date: string, entries: DayEntry[], employees: Map<string, E
     .map((e) => {
       const name = employees.get(e.employeeId)?.name ?? "";
       if (e.dayOff && !e.shifts.length) return `${name} ${DAY_OFF_LABEL[e.dayOff].toLowerCase()}`;
-      const shifts = e.shifts.map((s) => formatShortSpan(s.start, s.end, tz)).join(" y ");
+      const shifts = e.shifts
+        .map((s) => `entra ${formatShortTime(s.start, tz)} y sale ${formatShortTime(s.end, tz)}`)
+        .join("; después ");
       const worked = e.workedMin ? `, trabajó ${formatMinutes(e.workedMin)}` : "";
       return `${name} ${shifts || "sin turno"}${worked}`;
     });

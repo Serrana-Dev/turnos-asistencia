@@ -64,6 +64,7 @@ export function OwnerSchedule({ token }: { token: string }) {
   const today = localDateKey(Date.now(), tz);
   const isCurrentMonth = data.month === today.slice(0, 7);
   const day = selected && data.dates.includes(selected) ? selected : isCurrentMonth ? today : `${data.month}-01`;
+  const gridIndex = data.dates.indexOf(day);
   const employees = new Map(data.employees.map((e) => [e.id, e]));
   const colors = colorIndex(data.employees);
   const single = filter !== ALL && employees.has(filter);
@@ -207,6 +208,12 @@ export function OwnerSchedule({ token }: { token: string }) {
 
       <p className="muted small legend">
         <span className="legend-item">
+          <span className="swatch in" aria-hidden="true" /> Entrada
+        </span>
+        <span className="legend-item">
+          <span className="swatch out" aria-hidden="true" /> Salida
+        </span>
+        <span className="legend-item">
           <span className="swatch published" aria-hidden="true" /> Publicado
         </span>
         <span className="legend-item">
@@ -230,6 +237,8 @@ export function OwnerSchedule({ token }: { token: string }) {
         employees={employees}
         colors={colors}
         audience="owner"
+        onPrev={gridIndex > 0 ? () => setSelected(data.dates[gridIndex - 1]!) : undefined}
+        onNext={gridIndex < data.dates.length - 1 ? () => setSelected(data.dates[gridIndex + 1]!) : undefined}
         onOpenShift={(shift) => setDialog({ kind: "shift", shift })}
         emptyText="No hay horarios para este día."
         actions={

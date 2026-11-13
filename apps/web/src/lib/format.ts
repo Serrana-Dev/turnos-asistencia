@@ -98,6 +98,11 @@ export function formatSpan(start: number, end: number, tz: number): string {
 }
 
 /** "Ana López" -> "AL". Con un solo nombre, las dos primeras letras ("Lau" -> "La") para distinguir a Emi de Eri. */
+/** "de 09:30 a 14:00": deja claro cuál es la entrada y cuál la salida. */
+export function formatFromTo(start: number, end: number, tz: number): string {
+  return `de ${formatTime(start, tz)} a ${formatTime(end, tz)}`;
+}
+
 export function initials(name: string): string {
   const words = name.split(/\s+/).filter(Boolean);
   if (words.length === 1) {

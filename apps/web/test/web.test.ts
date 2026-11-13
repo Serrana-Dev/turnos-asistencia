@@ -6,6 +6,7 @@ import { summarize, teamTotals } from "../src/lib/summary";
 import { buildTimesheet, checkSchedule, nextPunchType } from "../src/lib/timesheet";
 import { demoCreateShifts, demoSnapshot } from "../src/demo";
 import { formatSpan } from "../src/lib/format";
+import { dayStatus, segmentState } from "../src/lib/dayStatus";
 import { localDateKey } from "@turnos/core";
 import { fixtureSnapshot } from "./fixture";
 
@@ -49,6 +50,27 @@ describe("horarios de noviembre cargados en la demo", () => {
     expect(offs("pao")).toEqual(["2026-11-12", "2026-11-16", "2026-11-25"]);
     expect(offs("emi")).toEqual(["2026-11-16", "2026-11-24"]);
     expect(offs("joha")).toEqual(["2026-11-12", "2026-11-19", "2026-11-26"]);
+  });
+});
+
+describe("horario de hoy en vivo", () => {
+  const h = (hh: number, mm = 0) => Date.UTC(2026, 10, 12, hh + 3, mm); // hora de Argentina
+  const lau = [
+    { id: "a", employeeId: "lau", start: h(9, 30), end: h(14) },
+    { id: "b", employeeId: "lau", start: h(17), end: h(21) },
+  ];
+
+  it("antes, durante, en la pausa y al terminar", () => {
+    expect(dayStatus(lau, h(9, 5))).toEqual({ kind: "before", minutes: 25, at: h(9, 30) });
+    const working = dayStatus(lau, h(11, 45));
+    expect(working).toMatchObject({ kind: "working", minutes: 135, at: h(14) });
+    expect(working.kind === "working" && working.progress).toBeCloseTo(0.5);
+    expect(dayStatus(lau, h(15))).toEqual({ kind: "break", minutes: 120, at: h(17) });
+    expect(dayStatus(lau, h(21, 30))).toEqual({ kind: "done" });
+  });
+
+  it("cada tramo sabe si ya pasó, está en curso o viene", () => {
+    expect(lau.map((s) => segmentState(s, h(18)))).toEqual(["done", "now"]);
   });
 });
 

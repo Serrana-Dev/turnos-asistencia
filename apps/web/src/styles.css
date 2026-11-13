@@ -35,6 +35,12 @@
   --ring: #2563eb;
   --shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.08);
 
+  /* Entrada y salida: siempre acompañadas de ícono o texto, el color solo ayuda. */
+  --in-text: #047857;
+  --in-soft: #ecfdf5;
+  --out-text: #6d28d9;
+  --out-soft: #f5f3ff;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -77,6 +83,11 @@
 
     --ring: #93c5fd;
     --shadow: none;
+
+    --in-text: #34d399;
+    --in-soft: #062e23;
+    --out-text: #c4b5fd;
+    --out-soft: #221b3d;
     color-scheme: dark;
   }
 }
@@ -179,7 +190,7 @@ a {
 }
 
 .demo-nav {
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
 
@@ -194,7 +205,7 @@ a {
 }
 
 /* Con el calendario la página se ensancha; la barra acompaña. */
-.topbar:has(~ .page .cal) .demo-nav-inner,
+.demo-nav:has(~ .page .cal) .demo-nav-inner,
 .topbar:has(~ .page .cal) .topbar-inner {
   max-width: 1040px;
 }
@@ -1003,6 +1014,10 @@ a {
   background: var(--surface-2);
 }
 
+.cal-day:active {
+  background: var(--primary-soft);
+}
+
 .cal-day.outside {
   background: var(--bg);
 }
@@ -1206,6 +1221,329 @@ a {
   }
 }
 
+/* Celda de un empleado: cada tramo es un bloque con entrada arriba y salida abajo. */
+.cal-seg {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 4px 2px 6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--in-soft), var(--out-soft));
+  border-left: 3px solid var(--in-text);
+  font-family: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.cal-seg.draft {
+  background: transparent;
+  outline: 1px dashed var(--border-strong);
+  outline-offset: -1px;
+}
+
+.cal-in {
+  color: var(--in-text);
+  font-weight: 700;
+}
+
+.cal-out {
+  color: var(--out-text);
+  font-weight: 600;
+}
+
+.cal-arrow {
+  color: var(--text-muted);
+  margin: 0 1px;
+}
+
+@media (min-width: 560px) {
+  .cal-seg {
+    flex-direction: row;
+    gap: 6px;
+    font-size: 0.8125rem;
+  }
+
+  .cal-seg .cal-out::before {
+    content: "›";
+    color: var(--text-muted);
+    margin-right: 6px;
+    font-weight: 400;
+  }
+}
+
+/* ---------- Línea de tiempo del horario ---------- */
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.tl-card {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.tl-segment.draft .tl-card {
+  border: 1.5px dashed var(--border-strong);
+}
+
+.tl-button {
+  cursor: pointer;
+  transition: border-color var(--dur-fast) ease-out;
+}
+
+.tl-button:hover {
+  border-color: var(--border-strong);
+}
+
+.tl-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tl-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+.tl-in .tl-icon {
+  background: var(--in-soft);
+  color: var(--in-text);
+}
+
+.tl-out .tl-icon {
+  background: var(--out-soft);
+  color: var(--out-text);
+}
+
+.tl-label {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
+.tl-time {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-in .tl-time {
+  color: var(--in-text);
+}
+
+.tl-out .tl-time {
+  color: var(--out-text);
+}
+
+/* La duración cuelga de una línea que une entrada y salida. */
+.tl-dur {
+  margin-left: 13px;
+  padding: 2px 0 2px 23px;
+  border-left: 2px solid;
+  border-image: linear-gradient(var(--in-text), var(--out-text)) 1;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.tl-break {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: center;
+  padding: var(--space-1) 0 var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* Estado en vivo del tramo. */
+.tl-segment.is-done .tl-card {
+  opacity: 0.6;
+}
+
+.tl-segment.is-now .tl-card {
+  border-color: var(--in-text);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--in-text) 18%, transparent);
+}
+
+.tl-now,
+.tl-done {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: var(--space-1);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.tl-now {
+  background: var(--in-text);
+  color: var(--surface);
+}
+
+.tl-now::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.tl-done {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.tl-progress {
+  display: block;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.tl-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--in-text), var(--out-text));
+  transition: width 600ms ease-out;
+}
+
+.now-banner {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  font-weight: 600;
+  background: var(--primary-soft);
+  color: var(--primary-text);
+}
+
+.now-banner.working {
+  background: var(--in-soft);
+  color: var(--in-text);
+}
+
+.now-banner.break {
+  background: var(--out-soft);
+  color: var(--out-text);
+}
+
+.now-banner.done {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Al cambiar de día, el contenido aparece suave (sin mover nada de lugar). */
+.day-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: fade-in 180ms ease-out;
+}
+
+.day-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.day-arrow {
+  flex: none;
+}
+
+.today-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Marcas reales: entró / salió con su ícono. */
+.marked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.marked-pair {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.io {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-family: var(--font-heading);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.io.in {
+  background: var(--in-soft);
+  color: var(--in-text);
+}
+
+.io.out {
+  background: var(--out-soft);
+  color: var(--out-text);
+}
+
+.swatch.in {
+  background: var(--in-text);
+}
+
+.swatch.out {
+  background: var(--out-text);
+}
+
 /* ---------- Detalle del día ---------- */
 
 .day-head {
@@ -1255,6 +1593,14 @@ a {
 .entry-grid dd {
   margin: 0;
   font-weight: 550;
+}
+
+.entry-grid .full {
+  grid-column: 1 / -1;
+}
+
+.entry-grid dt {
+  margin-bottom: var(--space-1);
 }
 
 .shift-pills {
@@ -1710,5 +2056,6 @@ a {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+    animation: none !important;
   }
 }

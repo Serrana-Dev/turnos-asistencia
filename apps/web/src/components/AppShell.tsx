@@ -26,9 +26,12 @@ export function AppShell({ helpHref = "/ayuda", children }: Props) {
             Ayuda
           </Link>
         </div>
-        {/* Con datos de ejemplo se puede saltar entre dueño y empleados. En uso real cada uno entra por su enlace. */}
-        {DEMO_MODE && <DemoNav />}
       </header>
+      {/*
+        Con datos de ejemplo se puede saltar entre dueño y empleados. En uso real cada uno entra por su enlace.
+        Va fuera del encabezado fijo: en pantallas bajas no tapa el contenido.
+      */}
+      {DEMO_MODE && <DemoNav />}
       <main className="page">{children}</main>
     </>
   );

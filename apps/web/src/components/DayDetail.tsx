@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import { AlertTriangle, MapPin, TrendingUp } from "lucide-react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, LogIn, LogOut, MapPin, TrendingUp } from "lucide-react";
 import type { Employee, ScheduledShift } from "@turnos/contract";
 import type { DayEntry } from "../lib/calendar";
 import {
@@ -8,10 +8,11 @@ import {
   describeLocationFlag,
   formatLongDate,
   formatMinutes,
-  formatSpan,
+  formatTime,
   initials,
   DAY_OFF_LABEL,
 } from "../lib/format";
+import { ScheduleTimeline } from "./ScheduleTimeline";
 import { AttendanceBadge } from "./TimesheetView";
 
 interface Props {
@@ -28,6 +29,9 @@ interface Props {
   /** Acciones al pie (ej. "Asignar turno"). */
   actions?: ReactNode;
   emptyText: string;
+  /** Flechas para pasar al día anterior / siguiente sin volver al calendario. */
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
 /** Detalle del día elegido: por empleado, turno asignado, lo marcado, horas y extra. */
@@ -43,20 +47,53 @@ export function DayDetail({
   onOpenShift,
   actions,
   emptyText,
+  onPrev,
+  onNext,
 }: Props) {
+  const ref = useRef<HTMLElement>(null);
+  const firstRender = useRef(true);
+
+  // Al elegir otro día, si el detalle quedó fuera de la pantalla (celular), se acerca solo.
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.top < 0 || r.top > window.innerHeight - 120) {
+      const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+    }
+  }, [date]);
+
   const visible = entries.filter(
     (e) => e.shifts.length || e.intervals.length || e.anomalies.length || e.locationFlags.length || e.dayOff,
   );
 
   return (
-    <section className="card day-detail" aria-labelledby="day-detail-title" aria-live="polite">
+    <section ref={ref} className="card day-detail" aria-labelledby="day-detail-title" aria-live="polite">
       <div className="day-head">
-        <h2 id="day-detail-title" className="cap">
-          {formatLongDate(date)}
-        </h2>
-        {date === today && <span className="badge ok">Hoy</span>}
-        {isHoliday && <span className="badge warn">Feriado</span>}
+        {onPrev && (
+          <button type="button" className="btn ghost icon-btn day-arrow" aria-label="Día anterior" onClick={onPrev}>
+            <ChevronLeft size={20} aria-hidden="true" />
+          </button>
+        )}
+        <div className="day-title">
+          <h2 id="day-detail-title" className="cap">
+            {formatLongDate(date)}
+          </h2>
+          {date === today && <span className="badge ok">Hoy</span>}
+          {isHoliday && <span className="badge warn">Feriado</span>}
+        </div>
+        {onNext && (
+          <button type="button" className="btn ghost icon-btn day-arrow" aria-label="Día siguiente" onClick={onNext}>
+            <ChevronRight size={20} aria-hidden="true" />
+          </button>
+        )}
       </div>
+      <div key={date} className="day-body">
 
       {visible.length === 0 ? (
         <p className="muted">{emptyText}</p>
@@ -95,32 +132,13 @@ export function DayDetail({
                 )}
 
                 <dl className="entry-grid">
-                  <div>
-                    <dt>Turno</dt>
+                  <div className="full">
+                    <dt>Horario</dt>
                     <dd>
                       {e.shifts.length === 0 ? (
                         <span className="muted">Sin turno asignado</span>
                       ) : (
-                        <span className="shift-pills">
-                          {e.shifts.map((s) =>
-                            onOpenShift ? (
-                              <button
-                                key={s.id}
-                                type="button"
-                                className={`shift-pill ${s.status === "DRAFT" ? "draft" : ""}`}
-                                onClick={() => onOpenShift(s)}
-                                aria-label={`${formatSpan(s.start, s.end, tz)}${s.status === "DRAFT" ? ", borrador" : ""}. Ver o quitar`}
-                              >
-                                {formatSpan(s.start, s.end, tz)}
-                                {s.status === "DRAFT" && <span className="chip-tag">Borrador</span>}
-                              </button>
-                            ) : (
-                              <span key={s.id} className="shift-pill static">
-                                {formatSpan(s.start, s.end, tz)}
-                              </span>
-                            ),
-                          )}
-                        </span>
+                        <ScheduleTimeline shifts={e.shifts} tz={tz} onOpenShift={onOpenShift} />
                       )}
                     </dd>
                   </div>
@@ -128,7 +146,22 @@ export function DayDetail({
                     <dt>Marcado</dt>
                     <dd>
                       {e.intervals.length ? (
-                        <span className="num">{e.intervals.map((iv) => formatSpan(iv.start, iv.end, tz)).join(" y ")}</span>
+                        <span className="marked">
+                          {e.intervals.map((iv) => (
+                            <span key={iv.start} className="marked-pair">
+                              <span className="io in">
+                                <LogIn size={14} aria-hidden="true" />
+                                <span className="visually-hidden">Entró</span>
+                                {formatTime(iv.start, tz)}
+                              </span>
+                              <span className="io out">
+                                <LogOut size={14} aria-hidden="true" />
+                                <span className="visually-hidden">Salió</span>
+                                {formatTime(iv.end, tz)}
+                              </span>
+                            </span>
+                          ))}
+                        </span>
                       ) : (
                         <span className="muted">{date > today ? "—" : "Sin marcas completas"}</span>
                       )}
@@ -144,9 +177,11 @@ export function DayDetail({
 
                 {(e.extraMin > 0 || overPlan > 0 || e.attendance.length > 0) && (
                   <div className="actions">
-                    {e.attendance.map((a) => (
-                      <AttendanceBadge key={a.shiftId} result={a} />
-                    ))}
+                    {e.attendance
+                      .filter((a, i, list) => list.findIndex((b) => b.status === a.status) === i)
+                      .map((a) => (
+                        <AttendanceBadge key={a.shiftId} result={a} />
+                      ))}
                     {e.extraMin > 0 && (
                       <span className="badge warn">
                         <TrendingUp size={14} aria-hidden="true" />
@@ -179,6 +214,7 @@ export function DayDetail({
           })}
         </ul>
       )}
+      </div>
       {actions && <div className="actions">{actions}</div>}
     </section>
   );
