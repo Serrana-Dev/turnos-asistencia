@@ -97,14 +97,20 @@ export function formatSpan(start: number, end: number, tz: number): string {
   return `${formatTime(start, tz)}–${formatTime(end, tz)}${suffix}`;
 }
 
+/** "Ana López" -> "AL". Con un solo nombre, las dos primeras letras ("Lau" -> "La") para distinguir a Emi de Eri. */
 export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length === 1) {
+    const w = words[0]!;
+    return w.charAt(0).toUpperCase() + w.charAt(1).toLowerCase();
+  }
+  return words
     .slice(0, 2)
     .map((w) => w[0]!.toUpperCase())
     .join("");
 }
+
+export const DAY_OFF_LABEL = { FRANCO: "Franco", VACACIONES: "Vacaciones", LICENCIA: "Licencia" } as const;
 
 export const ANOMALY_LABEL: Record<AnomalyKind, string> = {
   DOUBLE_IN: "Dos entradas seguidas",

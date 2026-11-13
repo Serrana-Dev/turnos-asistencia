@@ -114,6 +114,15 @@ export function prismaStore(db: PrismaClient): Store {
       }
     },
 
+    async listDaysOff(businessId, from, to, userId) {
+      const rows = await db.dayOff.findMany({
+        where: { user: { businessId }, ...(userId && { userId }), date: { gte: from, lte: to } },
+        select: { userId: true, date: true, kind: true },
+        orderBy: { date: "asc" },
+      });
+      return rows.map((r) => ({ employeeId: r.userId, date: r.date, kind: r.kind }));
+    },
+
     async listWorkplaces(businessId) {
       const rows = await db.location.findMany({
         where: { businessId, lat: { not: null }, lng: { not: null }, radiusM: { not: null } },

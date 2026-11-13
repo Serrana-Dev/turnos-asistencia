@@ -46,7 +46,7 @@ export function OwnerSchedule({ token }: { token: string }) {
   const calendar = useMemo(
     () =>
       data
-        ? buildCalendar(data.employees, data.shifts, data.punches, data.business, Date.now())
+        ? buildCalendar(data.employees, data.shifts, data.punches, data.business, Date.now(), data.daysOff)
         : new Map<string, DayEntry[]>(),
     [data],
   );

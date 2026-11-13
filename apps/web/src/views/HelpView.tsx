@@ -77,7 +77,7 @@ export function HelpView() {
             <div>
               <h3>Mirá tu calendario</h3>
               <p className="muted">
-                En <strong>Mi calendario</strong> cada día muestra tu horario (de corrido o cortado). A medida que
+                En <strong>Mi calendario</strong> cada día muestra tu horario (de corrido o cortado) o «Franco». A medida que
                 marcás aparece lo trabajado (✓) y, si te quedaste de más, las horas extra en amarillo. Tocá un día para
                 ver el detalle. En <strong>Mi mes</strong> está el total. Son los mismos números que ve el dueño.
               </p>

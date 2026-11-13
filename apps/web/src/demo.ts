@@ -1,10 +1,10 @@
 import type {
+  DayOff,
   Employee,
   MonthSchedule,
   NewShiftsInput,
   PublishInput,
   PublishResult,
-  PunchGeo,
   PunchRecord,
   ScheduledShift,
   ShiftTemplate,
@@ -12,46 +12,53 @@ import type {
   Workplace,
   WorkplaceInput,
 } from "@turnos/contract";
-import { MS_MIN, addDays, monthGridDates, shiftInstants, type Punch } from "@turnos/core";
+import { addDays, monthGridDates, shiftInstants } from "@turnos/core";
 
-/** Datos de ejemplo para usar la app sin apps/api. Los cambios viven en memoria hasta recargar. */
+/**
+ * Datos de la demo: el equipo y los horarios reales de noviembre 2026 que pasó el comercio.
+ * Los cambios que se hagan en la app viven en memoria hasta recargar.
+ */
 
 const OFFSET = -180;
-/** Hora local de Argentina -> epoch ms. */
-const at = (date: string, hhmm: string): number => {
-  const [y, mo, d] = date.split("-").map(Number) as [number, number, number];
-  const [h, mi] = hhmm.split(":").map(Number) as [number, number];
-  return Date.UTC(y, mo - 1, d, h, mi) - OFFSET * MS_MIN;
+
+/** Mes en que abre la demo. */
+export const DEMO_MONTH = "2026-11";
+
+/** Enlace personal de cada empleado en la demo: /e/lau, /e/ceci, … */
+export const DEMO_TOKENS: Record<string, string> = {
+  lau: "lau",
+  ceci: "ceci",
+  eri: "eri",
+  karen: "karen",
+  emi: "emi",
+  maca: "maca",
+  pao: "pao",
+  joha: "joha",
 };
 
-let seq = 0;
-const INSIDE: PunchGeo = { status: "INSIDE", distanceM: 20, accuracyM: 12 };
-const p = (
-  employeeId: string,
-  type: Punch["type"],
-  date: string,
-  hhmm: string,
-  geo: PunchGeo = INSIDE,
-): PunchRecord => ({ id: `demo-${++seq}`, employeeId, type, at: at(date, hhmm), geo });
-const shift = (
-  employeeId: string,
-  date: string,
-  from: string,
-  to: string,
-  status: ScheduledShift["status"] = "PUBLISHED",
-): ScheduledShift => ({ id: `shift-${employeeId}-${date}`, employeeId, start: at(date, from), end: at(date, to), status });
-
-export const DEMO_TOKENS: Record<string, string> = { ana: "e1", bruno: "e2" };
-
+// Lau primero: es quien va a usar el sistema.
 const employees: Employee[] = [
-  { id: "e1", name: "Ana López" },
-  { id: "e2", name: "Bruno Díaz" },
+  { id: "lau", name: "Lau" },
+  { id: "ceci", name: "Ceci" },
+  { id: "eri", name: "Eri" },
+  { id: "karen", name: "Karen" },
+  { id: "emi", name: "Emi" },
+  { id: "maca", name: "Maca" },
+  { id: "pao", name: "Pao" },
+  { id: "joha", name: "Joha" },
 ];
 
+/** Lista de empleados para la navegación de la demo. */
+export const DEMO_EMPLOYEES: readonly Employee[] = employees;
+/** Quien va a usar el sistema: aparece primero en la navegación y en el inicio. */
+export const DEMO_MAIN_EMPLOYEE: Employee = employees[0]!;
+
+/** Horarios que más se repiten en la grilla del comercio. */
 const templates: ShiftTemplate[] = [
-  { id: "t1", name: "Mañana", startMin: 9 * 60, endMin: 17 * 60 },
-  { id: "t2", name: "Tarde", startMin: 14 * 60, endMin: 22 * 60 },
-  { id: "t3", name: "Cierre", startMin: 17 * 60, endMin: 60 },
+  { id: "t1", name: "Mañana", startMin: 9 * 60 + 30, endMin: 13 * 60 + 30 },
+  { id: "t2", name: "Mañana larga", startMin: 9 * 60 + 30, endMin: 14 * 60 },
+  { id: "t3", name: "Tarde", startMin: 16 * 60, endMin: 21 * 60 },
+  { id: "t4", name: "Tarde finde", startMin: 14 * 60, endMin: 22 * 60 },
 ];
 
 const business: Snapshot["business"] = {
@@ -64,49 +71,90 @@ const business: Snapshot["business"] = {
   holidays: [],
 };
 
-// Plaza San Martín, Córdoba. El dueño lo cambia desde la pestaña Local.
-const workplaces: Workplace[] = [{ id: "w1", name: "Local centro", lat: -31.4167, lng: -64.1837, radiusM: 100 }];
-
-const shifts: ScheduledShift[] = [
-  ...["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29"].map((d) => shift("e1", d, "09:00", "17:00")),
-  ...["2026-10-26", "2026-10-27", "2026-10-28"].map((d) => shift("e2", d, "14:00", "22:00")),
-  // Horario cortado: dos tramos el mismo día.
-  { ...shift("e2", "2026-10-29", "10:00", "14:00"), id: "shift-e2-2026-10-29-a" },
-  { ...shift("e2", "2026-10-29", "18:00", "22:00"), id: "shift-e2-2026-10-29-b" },
-  shift("e2", "2026-10-30", "14:00", "22:00"),
-  shift("e1", "2026-10-31", "09:00", "17:00", "DRAFT"),
-];
-
-const punches: PunchRecord[] = [
-  p("e1", "IN", "2026-10-26", "09:02"),
-  p("e1", "OUT", "2026-10-26", "17:05"),
-  // Marcó lejos del local: queda para revisar.
-  p("e1", "IN", "2026-10-27", "09:20", { status: "OUTSIDE", distanceM: 850, accuracyM: 25 }),
-  p("e1", "OUT", "2026-10-27", "17:00"),
-  p("e1", "IN", "2026-10-28", "09:00"),
-  p("e1", "OUT", "2026-10-28", "19:00"),
-  p("e1", "IN", "2026-10-29", "09:00"),
-  p("e2", "IN", "2026-10-26", "14:00"),
-  p("e2", "OUT", "2026-10-26", "22:30"),
-  // No compartió la ubicación.
-  p("e2", "OUT", "2026-10-28", "22:00", { status: "NONE" }),
-  p("e2", "IN", "2026-10-29", "10:00"),
-  p("e2", "OUT", "2026-10-29", "14:05"),
-  p("e2", "IN", "2026-10-29", "18:00"),
-  p("e2", "OUT", "2026-10-29", "22:40"),
-];
+// Plaza San Martín, Córdoba, como ejemplo. El dueño carga el local real desde la pestaña Local.
+const workplaces: Workplace[] = [{ id: "w1", name: "Local", lat: -31.4167, lng: -64.1837, radiusM: 100 }];
 
 /**
- * Mes de los datos de ejemplo. La demo abre acá aunque el calendario real esté en otro mes,
- * así siempre se ve algo cargado.
+ * Grilla tal como la mandó el comercio. Por día: horario de cada persona ("9:30-14 17-21" = cortado,
+ * "10-16" = de corrido) o "F" = franco. Quien no figura ese día no trabaja.
+ * Notas del original que el sistema todavía no guarda: Maca el 12 figura "(Haas)" y el 18 y del 21 al 23
+ * "(Spell)".
  */
-export const DEMO_MONTH = "2026-10";
+const GRID: Record<string, Record<string, string>> = {
+  "2026-11-12": { lau: "9:30-14 17-21", ceci: "10-16", eri: "16-21", karen: "10-17", emi: "9:30-14 17-21", maca: "16-21", pao: "F", joha: "F" },
+  "2026-11-13": { lau: "9:30-14 17-21:30", ceci: "10-16", pao: "16-21:30", joha: "10-17", maca: "16-21:30", emi: "9:30-14 17-21:30", karen: "F", eri: "F" },
+  "2026-11-14": { pao: "9:30-13:30", maca: "10-14", lau: "14-22", eri: "16-22", joha: "9:30-14 18-22", emi: "10-18", karen: "16-22" },
+  // Mismo horario que el sábado, pero "el domingo abrimos 10:30": quien entraba antes, entra 10:30.
+  "2026-11-15": { pao: "10:30-13:30", maca: "10:30-14", lau: "14-22", eri: "16-22", joha: "10:30-14 18-22", emi: "10:30-18", karen: "16-22" },
+  "2026-11-16": { lau: "9:30-13:30 17-21", eri: "16-21", joha: "9:30-13:30 16-21", karen: "10-14 17-21", emi: "F", pao: "F" },
+  "2026-11-17": { lau: "9:30-13:30 17-21", pao: "16-21", emi: "10-14 17-21", joha: "9:30-13:30 16-21", eri: "F", karen: "F" },
+  "2026-11-18": { pao: "9:30-13:30", eri: "16-21", maca: "17-21", karen: "16-21", emi: "10-14 17-21", joha: "9:30-13:30", lau: "F" },
+  "2026-11-19": { pao: "9:30-13:30", lau: "16-21", eri: "17-21", karen: "9:30-13:30 16-21", emi: "10-14 17-21", joha: "F" },
+  "2026-11-20": { pao: "9:30-14", eri: "16-21:30", lau: "14-21:30", emi: "9:30-13:30 17-21:30", joha: "16-22", karen: "10-16" },
+  ...Object.fromEntries(
+    ["2026-11-21", "2026-11-22", "2026-11-23"].map((d) => [
+      d,
+      { lau: "14-22", pao: "9:30-14", eri: "17-22", maca: "10-17", joha: "9:30-13:30 17-22", karen: "10-17", emi: "14-22" },
+    ]),
+  ),
+  "2026-11-24": { lau: "16-21", pao: "9:30-13:30", maca: "17-21", joha: "9:30-13:30 16-21", karen: "10-14 17-21", eri: "F", emi: "F" },
+  "2026-11-25": { lau: "16-21", eri: "17-21", maca: "9:30-13:30", emi: "10-14 17-21", joha: "9:30-13:30 16-21", pao: "F", karen: "F" },
+  "2026-11-26": { pao: "9:30-13:30", eri: "16-21", maca: "17-21", emi: "9:30-13:30 16-21", karen: "10-14 17-21", lau: "F", joha: "F" },
+  "2026-11-27": { lau: "14-21:30", pao: "9:30-14", eri: "16-21:30", emi: "9:30-13:30 17-21:30", karen: "10-16", joha: "16-22" },
+  ...Object.fromEntries(
+    ["2026-11-28", "2026-11-29"].map((d) => [
+      d,
+      { pao: "9:30-16:30", eri: "16:30-22", maca: "10-14 17-22", joha: "16:30-22", karen: "9:30-16:30", emi: "10-14 17-22" },
+    ]),
+  ),
+  "2026-11-30": { lau: "9:30-13:30 17-21", eri: "16-21", joha: "9:30-13:30 16-21", karen: "10-14 17-21" },
+};
+
+/** "9:30" -> 570, "21" -> 1260. */
+function toMin(t: string): number {
+  const [h, m = "0"] = t.split(":");
+  return Number(h) * 60 + Number(m);
+}
+
+const shifts: ScheduledShift[] = [];
+const daysOff: DayOff[] = [];
+for (const [date, people] of Object.entries(GRID)) {
+  for (const [employeeId, spec] of Object.entries(people)) {
+    if (spec === "F") {
+      daysOff.push({ employeeId, date, kind: "FRANCO" });
+      continue;
+    }
+    spec.split(" ").forEach((segment, i) => {
+      const [from, to] = segment.split("-") as [string, string];
+      shifts.push({
+        id: `shift-${employeeId}-${date}-${i}`,
+        employeeId,
+        ...shiftInstants(date, toMin(from), toMin(to), OFFSET),
+        status: "PUBLISHED",
+      });
+    });
+  }
+}
+shifts.sort((a, b) => a.start - b.start);
+
+/** Todavía no hay marcas reales: se van sumando a medida que fichan. */
+const punches: PunchRecord[] = [];
+
+let seq = 0;
+
+function datesRange(first: string, last: string) {
+  return { from: shiftInstants(first, 0, 1, OFFSET).start, to: shiftInstants(addDays(last, 1), 0, 1, OFFSET).start };
+}
+
+function monthBounds(month: string) {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return { first: `${month}-01`, last: new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10) };
+}
 
 /** Lo que vería el empleado/dueño en un mes: solo turnos publicados. */
 export function demoSnapshot(month = DEMO_MONTH): Snapshot {
-  const [y, m] = month.split("-").map(Number) as [number, number];
-  const last = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
-  const { from, to } = datesRange(`${month}-01`, last);
+  const { first, last } = monthBounds(month);
+  const { from, to } = datesRange(first, last);
   return {
     month,
     business,
@@ -116,11 +164,8 @@ export function demoSnapshot(month = DEMO_MONTH): Snapshot {
       .filter((s) => s.status === "PUBLISHED" && s.start >= from && s.start < to)
       .map(({ id, employeeId, start, end }) => ({ id, employeeId, start, end })),
     workplaces,
+    daysOff: daysOff.filter((d) => d.date >= first && d.date <= last),
   };
-}
-
-function datesRange(first: string, last: string) {
-  return { from: shiftInstants(first, 0, 1, OFFSET).start, to: shiftInstants(addDays(last, 1), 0, 1, OFFSET).start };
 }
 
 export function demoSchedule(month?: string): MonthSchedule {
@@ -135,6 +180,7 @@ export function demoSchedule(month?: string): MonthSchedule {
     shifts: shifts.filter((s) => s.start >= from && s.start < to).sort((a, b) => a.start - b.start),
     punches: punches.filter((p) => p.at >= from && p.at < to),
     templates,
+    daysOff: daysOff.filter((d) => d.date >= dates[0]! && d.date <= dates.at(-1)!),
   };
 }
 

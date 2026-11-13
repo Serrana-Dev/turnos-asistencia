@@ -5,11 +5,52 @@ import { buildCalendar } from "../src/lib/calendar";
 import { summarize, teamTotals } from "../src/lib/summary";
 import { buildTimesheet, checkSchedule, nextPunchType } from "../src/lib/timesheet";
 import { demoCreateShifts, demoSnapshot } from "../src/demo";
+import { formatSpan } from "../src/lib/format";
+import { localDateKey } from "@turnos/core";
+import { fixtureSnapshot } from "./fixture";
 
-const DEMO_SNAPSHOT = demoSnapshot();
+const DEMO_SNAPSHOT = fixtureSnapshot();
 
 let n = 0;
 const id = () => `p${++n}`;
+
+describe("horarios de noviembre cargados en la demo", () => {
+  const snap = demoSnapshot("2026-11");
+  const day = (employeeId: string, date: string) =>
+    snap.planned
+      .filter((s) => s.employeeId === employeeId && localDateKey(s.start, -180) === date)
+      .sort((a, b) => a.start - b.start)
+      .map((s) => formatSpan(s.start, s.end, -180))
+      .join(" y ");
+  const offs = (employeeId: string) => snap.daysOff.filter((d) => d.employeeId === employeeId).map((d) => d.date);
+
+  it("están los 8 del equipo, con Lau primero", () => {
+    expect(snap.employees.map((e) => e.name)).toEqual(["Lau", "Ceci", "Eri", "Karen", "Emi", "Maca", "Pao", "Joha"]);
+  });
+
+  it("Lau: cortados, de corrido y francos como en la grilla", () => {
+    expect(day("lau", "2026-11-12")).toBe("09:30–14:00 y 17:00–21:00");
+    expect(day("lau", "2026-11-13")).toBe("09:30–14:00 y 17:00–21:30");
+    expect(day("lau", "2026-11-14")).toBe("14:00–22:00");
+    expect(day("lau", "2026-11-20")).toBe("14:00–21:30");
+    expect(day("lau", "2026-11-30")).toBe("09:30–13:30 y 17:00–21:00");
+    expect(offs("lau")).toEqual(["2026-11-18", "2026-11-26"]);
+  });
+
+  it("el domingo 15 abre 10:30 y los findes repetidos se copian", () => {
+    expect(day("pao", "2026-11-14")).toBe("09:30–13:30");
+    expect(day("pao", "2026-11-15")).toBe("10:30–13:30");
+    expect(day("joha", "2026-11-15")).toBe("10:30–14:00 y 18:00–22:00");
+    expect(day("maca", "2026-11-23")).toBe("10:00–17:00");
+    expect(day("karen", "2026-11-29")).toBe("09:30–16:30");
+  });
+
+  it("francos de cada uno", () => {
+    expect(offs("pao")).toEqual(["2026-11-12", "2026-11-16", "2026-11-25"]);
+    expect(offs("emi")).toEqual(["2026-11-16", "2026-11-24"]);
+    expect(offs("joha")).toEqual(["2026-11-12", "2026-11-19", "2026-11-26"]);
+  });
+});
 
 describe("PunchQueue", () => {
   it("no duplica una marca encolada dos veces", async () => {
@@ -101,7 +142,7 @@ describe("timesheet", () => {
   });
 
   it("el calendario junta horario cortado, lo marcado y las horas extra del día", () => {
-    const snap = demoSnapshot();
+    const snap = fixtureSnapshot();
     const shifts = snap.planned.map((s) => ({ ...s, status: "PUBLISHED" as const }));
     const cal = buildCalendar(snap.employees, shifts, snap.punches, snap.business);
     const ana28 = cal.get("2026-10-28")?.find((e) => e.employeeId === "e1");
@@ -137,11 +178,15 @@ describe("timesheet", () => {
   it("el recuento por empleado junta horas, extra, asistencia y lo pendiente", () => {
     // "Ahora" = 30/10 12:00 en Argentina: el turno de Bruno de ese día todavía no terminó.
     const now = Date.UTC(2026, 9, 30, 15, 0);
-    const ana = summarize(buildTimesheet("e1", punches, planned, business, now), planned, now);
+    const ana = summarize(buildTimesheet("e1", punches, planned, business, now), planned, now, -180, [
+      { employeeId: "e1", date: "2026-10-31" },
+    ]);
     expect(ana).toMatchObject({
       workedMin: 483 + 460 + 600,
       extraMin: 123,
       shifts: 4,
+      workDays: 4,
+      daysOff: 1,
       plannedMin: 4 * 480,
       plannedPastMin: 4 * 480,
       onTime: 2,
@@ -150,7 +195,9 @@ describe("timesheet", () => {
       absent: 1,
       toReview: 2, // entrada sin salida + entrada fuera del local
     });
-    const bruno = summarize(buildTimesheet("e2", punches, planned, business, now), planned, now);
+    const bruno = summarize(buildTimesheet("e2", punches, planned, business, now), planned, now, -180);
+    // El 29 tiene horario cortado: dos turnos, un solo día de trabajo.
+    expect(bruno.shifts - bruno.workDays).toBe(1);
     expect(bruno.upcomingShifts.map((s) => s.id)).toEqual(["shift-e2-2026-10-30"]);
     expect(teamTotals([ana, bruno]).workedMin).toBe(ana.workedMin + bruno.workedMin);
   });

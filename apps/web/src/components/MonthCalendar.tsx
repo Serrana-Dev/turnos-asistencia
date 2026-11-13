@@ -1,6 +1,6 @@
 import type { Employee } from "@turnos/contract";
 import type { DayEntry } from "../lib/calendar";
-import { formatLongDate, formatMinutes, formatShortSpan, initials } from "../lib/format";
+import { DAY_OFF_LABEL, formatLongDate, formatMinutes, formatShortSpan, initials } from "../lib/format";
 
 const HEADERS = ["L", "M", "M", "J", "V", "S", "D"];
 const HEADERS_LONG = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
@@ -84,6 +84,7 @@ function SingleCell({ entry, tz }: { entry?: DayEntry; tz: number }) {
   if (!entry) return null;
   return (
     <>
+      {entry.dayOff && <span className="cal-off">{DAY_OFF_LABEL[entry.dayOff]}</span>}
       {entry.shifts.map((s) => (
         <span key={s.id} className={`cal-shift ${s.status === "DRAFT" ? "draft" : ""}`}>
           {formatShortSpan(s.start, s.end, tz)}
@@ -133,6 +134,11 @@ function TeamCell({
         </span>
       ))}
       {withShifts.length > MAX_PER_CELL && <span className="cal-more">+{withShifts.length - MAX_PER_CELL}</span>}
+      {entries.some((e) => e.dayOff) && (
+        <span className="cal-off-team">
+          F: {entries.filter((e) => e.dayOff).map((e) => initials(employees.get(e.employeeId)?.name ?? "?")).join(" ")}
+        </span>
+      )}
       {entries.some((e) => e.anomalies.length + e.locationFlags.length > 0) && <span className="cal-flag">!</span>}
     </>
   );
@@ -148,9 +154,10 @@ function formatCompact(min: number): string {
 
 function describeDay(date: string, entries: DayEntry[], employees: Map<string, Employee>, tz: number): string {
   const parts = entries
-    .filter((e) => e.shifts.length || e.workedMin)
+    .filter((e) => e.shifts.length || e.workedMin || e.dayOff)
     .map((e) => {
       const name = employees.get(e.employeeId)?.name ?? "";
+      if (e.dayOff && !e.shifts.length) return `${name} ${DAY_OFF_LABEL[e.dayOff].toLowerCase()}`;
       const shifts = e.shifts.map((s) => formatShortSpan(s.start, s.end, tz)).join(" y ");
       const worked = e.workedMin ? `, trabajó ${formatMinutes(e.workedMin)}` : "";
       return `${name} ${shifts || "sin turno"}${worked}`;

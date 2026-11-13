@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 import { BookOpen, CalendarDays, Smartphone } from "lucide-react";
 import { AppShell } from "./components/AppShell";
+import { DEMO_EMPLOYEES, DEMO_MAIN_EMPLOYEE } from "./demo";
 import { DEMO_MODE } from "./lib/api";
 import { EmployeeView } from "./views/EmployeeView";
 import { HelpView } from "./views/HelpView";
@@ -15,11 +16,10 @@ function Home() {
         <p className="muted">Horarios, fichaje y horas trabajadas, a la vista del dueño y de cada empleado.</p>
       </header>
 
-      {import.meta.env.DEV && (
+      {DEMO_MODE && (
         <p className="callout info small">
-          {DEMO_MODE
-            ? "Modo demo: datos de ejemplo que viven en el navegador. Si recargás, vuelven a como estaban."
-            : "Conectado a la API local con datos de ejemplo."}
+          Versión de prueba con el equipo y los horarios de noviembre. Lo que cambies se guarda solo en este navegador
+          y vuelve a como estaba al recargar.
         </p>
       )}
 
@@ -32,14 +32,20 @@ function Home() {
           <p className="muted">
             Entrás con el enlace personal que te manda el dueño. Ahí marcás entrada y salida, ves tus turnos y tus horas.
           </p>
-          {import.meta.env.DEV && (
-            <div className="actions">
-              <Link to="/e/ana" className="btn">
-                Entrar como Ana
+          {DEMO_MODE && (
+            <div className="stack">
+              <Link to={`/e/${DEMO_MAIN_EMPLOYEE.id}`} className="btn primary">
+                Entrar como {DEMO_MAIN_EMPLOYEE.name}
               </Link>
-              <Link to="/e/bruno" className="btn">
-                Entrar como Bruno
-              </Link>
+              <p className="muted small">
+                O como:{" "}
+                {DEMO_EMPLOYEES.filter((e) => e.id !== DEMO_MAIN_EMPLOYEE.id).map((e, i, list) => (
+                  <span key={e.id}>
+                    <Link to={`/e/${e.id}`}>{e.name}</Link>
+                    {i < list.length - 1 ? " · " : ""}
+                  </span>
+                ))}
+              </p>
             </div>
           )}
         </section>
@@ -50,9 +56,9 @@ function Home() {
           </span>
           <h2 id="role-owner">Soy el dueño</h2>
           <p className="muted">Armás los horarios de la semana, los publicás y ves las horas de todo el equipo.</p>
-          {import.meta.env.DEV && (
+          {DEMO_MODE && (
             <div className="actions">
-              <Link to={ownerHref} className="btn primary">
+              <Link to={ownerHref} className="btn">
                 Abrir el panel
               </Link>
             </div>

@@ -132,6 +132,13 @@ describe("horarios", () => {
     expect(m.shifts).toHaveLength(8); // 7 publicados + el borrador del 31
     expect(m.shifts.filter((s) => s.status === "DRAFT")).toHaveLength(1);
     expect(m.punches).toHaveLength(10);
+    expect(m.daysOff).toEqual([{ employeeId: "e2", date: "2026-10-31", kind: "FRANCO" }]);
+  });
+
+  it("cada empleado ve solo sus francos", async () => {
+    const { get } = setup();
+    expect((await get("/me/snapshot", "ana")).json<Snapshot>().daysOff).toEqual([]);
+    expect((await get("/me/snapshot", "bruno")).json<Snapshot>().daysOff).toHaveLength(1);
   });
 
   const one = (date: string, startMin: number, endMin: number, employeeId = "e1") => ({

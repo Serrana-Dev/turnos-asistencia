@@ -10,6 +10,7 @@ import {
   formatMinutes,
   formatSpan,
   initials,
+  DAY_OFF_LABEL,
 } from "../lib/format";
 import { AttendanceBadge } from "./TimesheetView";
 
@@ -44,7 +45,7 @@ export function DayDetail({
   emptyText,
 }: Props) {
   const visible = entries.filter(
-    (e) => e.shifts.length || e.intervals.length || e.anomalies.length || e.locationFlags.length,
+    (e) => e.shifts.length || e.intervals.length || e.anomalies.length || e.locationFlags.length || e.dayOff,
   );
 
   return (
@@ -64,6 +65,24 @@ export function DayDetail({
           {visible.map((e) => {
             const emp = employees.get(e.employeeId);
             const overPlan = e.plannedMin > 0 && e.workedMin > e.plannedMin ? e.workedMin - e.plannedMin : 0;
+            // Día libre sin nada más que mostrar: una línea.
+            if (e.dayOff && !e.shifts.length && !e.intervals.length && !e.anomalies.length && !e.locationFlags.length) {
+              return (
+                <li key={e.employeeId} className={`entry off emp-c${colors.get(e.employeeId) ?? 0}`}>
+                  <div className="entry-head">
+                    {audience === "owner" && (
+                      <>
+                        <span className="avatar sm emp-avatar" aria-hidden="true">
+                          {initials(emp?.name ?? "?")}
+                        </span>
+                        <strong>{emp?.name}</strong>
+                      </>
+                    )}
+                    <span className="badge neutral">{DAY_OFF_LABEL[e.dayOff]}</span>
+                  </div>
+                </li>
+              );
+            }
             return (
               <li key={e.employeeId} className={`entry emp-c${colors.get(e.employeeId) ?? 0}`}>
                 {audience === "owner" && (

@@ -26,6 +26,8 @@ Monorepo TypeScript (npm workspaces). Español rioplatense en docs y mensajes al
 - La API no calcula horas: devuelve datos crudos y el cliente usa `core`. Tipos compartidos en `packages/contract`.
 - Horarios: calendario mensual en el panel del dueño (`/owner/schedule`). Un horario cortado son dos turnos el mismo día; `findRestViolations` con `tzOffsetMinutes` no cuenta esa pausa como falta de descanso.
 - Ubicación al fichar: `checkGeofence` (core) en el servidor; se guarda solo `geoStatus`/`distanceM`/`accuracyM`, nunca coordenadas. Una marca nunca se rechaza por la ubicación.
+- Demo (`apps/web/src/demo.ts`): equipo y grilla real de noviembre 2026; Lau es la usuaria principal. Los tests de la web usan `apps/web/test/fixture.ts`, no la demo.
+- Francos: `DayOff` (db) → `daysOff` en los snapshots; se ven en el calendario y en Equipo. Todavía no se cargan desde la app.
 - UI: guía `ui-ux-pro-max`. Colores solo por tokens de `apps/web/src/styles.css`; nada de emojis como iconos (Lucide).
 
 - La web no calcula por su cuenta: todo número pasa por `buildTimesheet` (`apps/web/src/lib/timesheet.ts`) → `core`.

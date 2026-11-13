@@ -1,4 +1,4 @@
-import type { BusinessRules, Employee, PunchRecord, ScheduledShift } from "@turnos/contract";
+import type { BusinessRules, DayOff, Employee, PunchRecord, ScheduledShift } from "@turnos/contract";
 import { MS_MIN, localDateKey, type Anomaly, type AttendanceResult, type Interval } from "@turnos/core";
 import { buildTimesheet, type LocationFlag } from "./timesheet";
 
@@ -17,6 +17,8 @@ export interface DayEntry {
   anomalies: Anomaly[];
   /** Marcas de ese día fuera del local, sin ubicación o con GPS impreciso. */
   locationFlags: LocationFlag[];
+  /** Franco, vacaciones o licencia ese día. */
+  dayOff?: DayOff["kind"];
 }
 
 /**
@@ -30,6 +32,7 @@ export function buildCalendar(
   punches: readonly PunchRecord[],
   business: BusinessRules,
   now = Number.POSITIVE_INFINITY,
+  daysOff: readonly DayOff[] = [],
 ): Map<string, DayEntry[]> {
   const tz = business.tzOffsetMinutes;
   const days = new Map<string, DayEntry[]>();
@@ -76,6 +79,7 @@ export function buildCalendar(
     }
     for (const a of sheet.anomalies) entry(localDateKey(a.at, tz)).anomalies.push(a);
     for (const f of sheet.locationFlags) entry(localDateKey(f.at, tz)).locationFlags.push(f);
+    for (const d of daysOff) if (d.employeeId === emp.id) entry(d.date).dayOff = d.kind;
 
     for (const [day, e] of byDay) {
       e.shifts.sort((a, b) => a.start - b.start);

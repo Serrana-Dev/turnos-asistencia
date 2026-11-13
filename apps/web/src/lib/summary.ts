@@ -1,4 +1,4 @@
-import { MS_MIN, type PlannedShift } from "@turnos/core";
+import { MS_MIN, localDateKey, type PlannedShift } from "@turnos/core";
 import type { Timesheet } from "./timesheet";
 
 /** Recuento del período de un empleado: lo que el dueño necesita ver de un vistazo. */
@@ -14,6 +14,10 @@ export interface EmployeeSummary {
   /** Turnos publicados que ya terminaron, para comparar contra lo trabajado. */
   plannedPastMin: number;
   shifts: number;
+  /** Días con horario (un horario cortado es un solo día). */
+  workDays: number;
+  /** Francos del período. */
+  daysOff: number;
   onTime: number;
   late: number;
   /** Minutos de tardanza sumados. */
@@ -25,7 +29,13 @@ export interface EmployeeSummary {
   toReview: number;
 }
 
-export function summarize(sheet: Timesheet, planned: readonly PlannedShift[], now: number): EmployeeSummary {
+export function summarize(
+  sheet: Timesheet,
+  planned: readonly PlannedShift[],
+  now: number,
+  tzOffsetMinutes: number,
+  daysOff: readonly { employeeId: string; date: string }[] = [],
+): EmployeeSummary {
   const mine = planned.filter((s) => s.employeeId === sheet.employeeId).sort((a, b) => a.start - b.start);
   const minutes = (s: PlannedShift) => Math.round((s.end - s.start) / MS_MIN);
   const { total } = sheet.hours;
@@ -39,6 +49,8 @@ export function summarize(sheet: Timesheet, planned: readonly PlannedShift[], no
     plannedMin: mine.reduce((acc, s) => acc + minutes(s), 0),
     plannedPastMin: mine.filter((s) => s.end <= now).reduce((acc, s) => acc + minutes(s), 0),
     shifts: mine.length,
+    workDays: new Set(mine.map((s) => localDateKey(s.start, tzOffsetMinutes))).size,
+    daysOff: daysOff.filter((d) => d.employeeId === sheet.employeeId).length,
     onTime: sheet.attendance.filter((a) => a.status === "ON_TIME").length,
     late: late.length,
     lateMin: late.reduce((acc, a) => acc + a.lateMin, 0),

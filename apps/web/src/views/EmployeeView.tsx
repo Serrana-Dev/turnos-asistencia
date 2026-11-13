@@ -85,8 +85,16 @@ export function EmployeeView() {
   const sheet = buildTimesheet(me.id, punches, planned, business, now);
   const myPending = pending.filter((p) => p.employeeId === me.id);
   const mine = planned.filter((s) => s.employeeId === me.id).sort((a, b) => a.start - b.start);
-  const todayShift = mine.find((s) => localDateKey(s.start, tz) === today);
-  const upcoming = mine.filter((s) => s.start > now);
+  // Hoy puede tener dos tramos (horario cortado): se muestran los dos.
+  const todayShifts = mine.filter((s) => localDateKey(s.start, tz) === today);
+  const offToday = data.daysOff.some((d) => d.employeeId === me.id && d.date === today);
+  // Próximo día de trabajo (con todos sus tramos), sin contar hoy.
+  const nextDay = mine.map((s) => localDateKey(s.start, tz)).find((d) => d > today);
+  const nextDayShifts = nextDay ? mine.filter((s) => localDateKey(s.start, tz) === nextDay) : [];
+  const nextOff = data.daysOff
+    .filter((d) => d.employeeId === me.id && d.date > today)
+    .map((d) => d.date)
+    .sort()[0];
 
   // Calendario: los turnos que ve el empleado ya están publicados.
   const gridDates = monthGridDates(data.month);
@@ -98,6 +106,7 @@ export function EmployeeView() {
     punches,
     business,
     now,
+    data.daysOff,
   );
   const selectedDay = selected && gridDates.includes(selected) ? selected : today;
 
@@ -191,10 +200,13 @@ export function EmployeeView() {
           <span>{working ? `Estás trabajando desde ${sinceLabel}` : "No estás trabajando ahora"}</span>
         </div>
         <p className="muted">
-          {todayShift ? (
+          {todayShifts.length > 0 ? (
             <>
-              Tu turno de hoy: <strong className="num">{formatSpan(todayShift.start, todayShift.end, tz)}</strong>
+              Tu horario de hoy:{" "}
+              <strong className="num">{todayShifts.map((s) => formatSpan(s.start, s.end, tz)).join(" y ")}</strong>
             </>
+          ) : offToday ? (
+            "Hoy tenés franco."
           ) : (
             "Hoy no tenés turno asignado."
           )}
@@ -269,12 +281,22 @@ export function EmployeeView() {
           <h2 id="cal-title">Mi calendario</h2>
           <span className="muted small cap">{formatMonth(data.month)}</span>
         </div>
-        {upcoming[0] && (
+        {(nextDay || nextOff) && (
           <p className="muted small">
-            Próximo turno:{" "}
-            <strong className="cap">
-              {formatLongDate(localDateKey(upcoming[0].start, tz))}, {formatSpan(upcoming[0].start, upcoming[0].end, tz)}
-            </strong>
+            {nextDay && (
+              <>
+                Próximo día de trabajo:{" "}
+                <strong>
+                  {formatLongDate(nextDay)}, {nextDayShifts.map((s) => formatSpan(s.start, s.end, tz)).join(" y ")}
+                </strong>
+                .{" "}
+              </>
+            )}
+            {nextOff && (
+              <>
+                Próximo franco: <strong>{formatLongDate(nextOff)}</strong>.
+              </>
+            )}
           </p>
         )}
         <MonthCalendar

@@ -42,7 +42,7 @@ export function OwnerTeam({ token, base }: { token: string; base: string }) {
     const now = Date.now();
     return data.employees.map((employee) => {
       const sheet = buildTimesheet(employee.id, data.punches, data.planned, data.business, now);
-      return { employee, sheet, summary: summarize(sheet, data.planned, now) };
+      return { employee, sheet, summary: summarize(sheet, data.planned, now, data.business.tzOffsetMinutes, data.daysOff) };
     });
   }, [data]);
 
@@ -151,9 +151,10 @@ export function OwnerTeam({ token, base }: { token: string; base: string }) {
                   <span className="row-main">
                     <strong>{employee.name}</strong>
                     <span className="muted small">
-                      {summary.shifts === 0
+                      {summary.workDays === 0
                         ? "Sin horarios publicados"
-                        : `${summary.shifts} ${summary.shifts === 1 ? "turno" : "turnos"} en el mes`}
+                        : `${summary.workDays} ${summary.workDays === 1 ? "día" : "días"} de trabajo`}
+                      {summary.daysOff > 0 && ` · ${summary.daysOff} ${summary.daysOff === 1 ? "franco" : "francos"}`}
                     </span>
                     <span className="badges start">
                       {summary.extraMin > 0 && (

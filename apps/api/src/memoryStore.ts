@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { PunchGeo, ShiftTemplate, Workplace } from "@turnos/contract";
+import type { DayOff, PunchGeo, ShiftTemplate, Workplace } from "@turnos/contract";
 import type { PlannedShift, Punch } from "@turnos/core";
 import type { AuthUser, BusinessRow, InsertResult, Range, Store } from "./store";
 
@@ -9,6 +9,7 @@ export interface MemoryData {
   holidays: { businessId: string; date: string }[];
   templates: (ShiftTemplate & { businessId: string })[];
   workplaces: (Workplace & { businessId: string })[];
+  daysOff: DayOff[];
   shifts: (PlannedShift & { status: "DRAFT" | "PUBLISHED" | "CANCELLED" })[];
   punches: (Punch & { receivedAt: number; geo?: PunchGeo })[];
 }
@@ -58,6 +59,12 @@ export function memoryStore(data: MemoryData): Store & { data: MemoryData } {
       const { id, employeeId, type, at } = punch;
       data.punches.push({ id, employeeId, type, at, receivedAt, ...(geo && { geo }) });
       return "created";
+    },
+    async listDaysOff(businessId, from, to, userId) {
+      const ids = userIds(businessId);
+      return data.daysOff
+        .filter((d) => ids.has(d.employeeId) && (!userId || d.employeeId === userId) && d.date >= from && d.date <= to)
+        .sort((a, b) => a.date.localeCompare(b.date));
     },
     async listWorkplaces(businessId) {
       return data.workplaces

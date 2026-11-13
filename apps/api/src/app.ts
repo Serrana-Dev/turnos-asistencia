@@ -149,15 +149,16 @@ export function buildApp({ store, webOrigin = "http://localhost:5173", now = Dat
     const range = monthRange(m, offset);
     const userId = onlyUser ? user.id : undefined;
 
-    const [holidays, employees, punches, planned, workplaces] = await Promise.all([
+    const [holidays, employees, punches, planned, workplaces, daysOff] = await Promise.all([
       store.listHolidays(business.id, m),
       onlyUser ? Promise.resolve([{ id: user.id, name: user.name }]) : store.listActiveUsers(business.id),
       store.listPunches(business.id, range, userId),
       store.listPublishedShifts(business.id, range, userId),
       store.listWorkplaces(business.id),
+      store.listDaysOff(business.id, `${m}-01`, `${m}-31`, userId),
     ]);
 
-    return { month: m, business: rules(business, offset, holidays), employees, punches, planned, workplaces };
+    return { month: m, business: rules(business, offset, holidays), employees, punches, planned, workplaces, daysOff };
   }
 
   /**
@@ -233,12 +234,13 @@ export function buildApp({ store, webOrigin = "http://localhost:5173", now = Dat
       const dates = monthGridDates(month);
       const range = datesRange(dates[0]!, dates.at(-1)!, offset);
       const months = [...new Set(dates.map((d) => d.slice(0, 7)))];
-      const [holidayLists, employees, shifts, punches, templates] = await Promise.all([
+      const [holidayLists, employees, shifts, punches, templates, daysOff] = await Promise.all([
         Promise.all(months.map((m) => store.listHolidays(business.id, m))),
         store.listActiveUsers(business.id),
         store.listShifts(business.id, range),
         store.listPunches(business.id, range),
         store.listTemplates(business.id),
+        store.listDaysOff(business.id, dates[0]!, dates.at(-1)!),
       ]);
       return {
         month,
@@ -248,6 +250,7 @@ export function buildApp({ store, webOrigin = "http://localhost:5173", now = Dat
         shifts,
         punches,
         templates,
+        daysOff,
       };
     },
   );

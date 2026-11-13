@@ -19,7 +19,7 @@ npm run dev:web     # desde la raíz
 npm run build:web
 ```
 
-Sin `VITE_API_URL` (ver `.env.example`) corre en **modo demo**: datos de `src/demo.ts` en memoria (se reinician al recargar). Entradas: `/dueno`, `/e/ana`, `/e/bruno`.
+Sin `VITE_API_URL` (ver `.env.example`) corre en **modo demo** con el equipo y la grilla real de noviembre 2026 (`src/demo.ts`, objeto `GRID`), en memoria: se reinicia al recargar. Entradas: `/dueno`, `/e/lau` (la principal), `/e/ceci`, `/e/eri`, `/e/karen`, `/e/emi`, `/e/maca`, `/e/pao`, `/e/joha`. Los tests usan otros datos fijos (`test/fixture.ts`).
 
 Con la API: `VITE_API_URL=http://localhost:3000` y `npm run dev -w @turnos/api` (sin base, la API usa datos en memoria). El dueño entra por `/dueno/dueno` (provisorio).
 

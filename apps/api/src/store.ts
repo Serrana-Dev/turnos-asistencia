@@ -1,4 +1,5 @@
 import type {
+  DayOff,
   Employee,
   PunchGeo,
   PunchRecord,
@@ -53,6 +54,9 @@ export interface Store {
    * `geo`: resultado de la geovalla (null si el comercio no tiene local). Nunca se guardan coordenadas.
    */
   insertPunch(punch: Punch, receivedAt: number, geo: PunchGeo | null): Promise<InsertResult>;
+
+  /** Días libres entre dos fechas locales (inclusive). Con `userId`, solo los de esa persona. */
+  listDaysOff(businessId: string, from: string, to: string, userId?: string): Promise<DayOff[]>;
 
   // ---------- Ubicación ----------
   /** Locales con geovalla configurada. */

@@ -47,6 +47,7 @@ export function demoData(): MemoryData {
     holidays: [],
     // Plaza San Martín, Córdoba. Sirve de ejemplo; el dueño lo cambia desde la pestaña Local.
     workplaces: [{ id: "w1", businessId: "b1", name: "Local centro", lat: -31.4167, lng: -64.1837, radiusM: 100 }],
+    daysOff: [{ employeeId: "e2", date: "2026-10-31", kind: "FRANCO" }],
     templates: [
       { id: "t1", businessId: "b1", name: "Mañana", startMin: 9 * 60, endMin: 17 * 60 },
       { id: "t2", businessId: "b1", name: "Tarde", startMin: 14 * 60, endMin: 22 * 60 },

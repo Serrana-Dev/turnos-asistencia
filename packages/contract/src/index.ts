@@ -17,6 +17,14 @@ export interface Employee {
   name: string;
 }
 
+/** Día libre de un empleado (espejo de DayOff en packages/db). */
+export interface DayOff {
+  employeeId: string;
+  /** Fecha local "YYYY-MM-DD". */
+  date: string;
+  kind: "FRANCO" | "VACACIONES" | "LICENCIA";
+}
+
 // ---------- Ubicación ----------
 
 /** Lugar de trabajo con geovalla. Es la dirección del comercio, no un dato personal. */
@@ -59,6 +67,8 @@ export interface Snapshot {
   planned: PlannedShift[];
   /** Locales con geovalla. Vacío: no se pide ubicación al fichar. */
   workplaces: Workplace[];
+  /** Francos, vacaciones y licencias del período. */
+  daysOff: DayOff[];
 }
 
 export interface EmployeeSnapshot extends Snapshot {
@@ -106,6 +116,7 @@ export interface MonthSchedule {
   /** Marcas reales, para ver lo trabajado contra lo planificado. */
   punches: PunchRecord[];
   templates: ShiftTemplate[];
+  daysOff: DayOff[];
 }
 
 /** Cuerpo de POST /owner/schedule/publish: publica los borradores entre esas fechas (inclusive). */

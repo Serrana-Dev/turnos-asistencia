@@ -1,16 +1,14 @@
 import type { ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, CalendarDays, CircleHelp, Clock, Home, Smartphone } from "lucide-react";
 import { DEMO_MODE } from "../lib/api";
+import { DEMO_EMPLOYEES, DEMO_MAIN_EMPLOYEE } from "../demo";
 
 interface Props {
   /** A qué sección del manual lleva el botón de ayuda. Siempre en el mismo lugar (arriba a la derecha). */
   helpHref?: string;
   children: ReactNode;
 }
-
-/** Con datos de ejemplo se puede saltar entre dueño y empleados. En producción cada uno entra por su enlace. */
-const SHOW_DEMO_NAV = DEMO_MODE || import.meta.env.DEV;
 
 export function AppShell({ helpHref = "/ayuda", children }: Props) {
   return (
@@ -28,7 +26,8 @@ export function AppShell({ helpHref = "/ayuda", children }: Props) {
             Ayuda
           </Link>
         </div>
-        {SHOW_DEMO_NAV && <DemoNav />}
+        {/* Con datos de ejemplo se puede saltar entre dueño y empleados. En uso real cada uno entra por su enlace. */}
+        {DEMO_MODE && <DemoNav />}
       </header>
       <main className="page">{children}</main>
     </>
@@ -36,13 +35,14 @@ export function AppShell({ helpHref = "/ayuda", children }: Props) {
 }
 
 function DemoNav() {
-  const owner = DEMO_MODE ? "/dueno" : "/dueno/dueno";
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const others = DEMO_EMPLOYEES.filter((e) => e.id !== DEMO_MAIN_EMPLOYEE.id);
+  const current = others.find((e) => pathname === `/e/${e.id}`);
   const items = [
     { to: "/", label: "Inicio", icon: Home, end: true },
-    { to: owner, label: "Dueño", icon: CalendarDays },
-    { to: "/e/ana", label: "Ana", icon: Smartphone },
-    { to: "/e/bruno", label: "Bruno", icon: Smartphone },
-    { to: "/ayuda", label: "Manual", icon: BookOpen },
+    { to: "/dueno", label: "Dueño", icon: CalendarDays },
+    { to: `/e/${DEMO_MAIN_EMPLOYEE.id}`, label: DEMO_MAIN_EMPLOYEE.name, icon: Smartphone },
   ];
   return (
     <nav className="demo-nav" aria-label="Ver el sistema como">
@@ -54,6 +54,26 @@ function DemoNav() {
             {label}
           </NavLink>
         ))}
+        <label className="visually-hidden" htmlFor="demo-other">
+          Ver como otro usuario
+        </label>
+        <select
+          id="demo-other"
+          className={`demo-nav-select ${current ? "active" : ""}`}
+          value={current?.id ?? ""}
+          onChange={(e) => e.target.value && navigate(`/e/${e.target.value}`)}
+        >
+          <option value="">Otro usuario…</option>
+          {others.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+        <NavLink to="/ayuda" className="demo-nav-link">
+          <BookOpen size={16} aria-hidden="true" />
+          Manual
+        </NavLink>
       </div>
     </nav>
   );
